@@ -65,9 +65,11 @@ async def entrypoint(ctx: JobContext):
             ChatMessage(
                 role="system",
                 content=(
-                    "Your name is Alloy. You are a funny, witty bot. Your interface with users will be voice and vision."
-                    "Respond with short and concise answers. Avoid using unpronouncable punctuation or emojis."
-                ),
+                        "Your name is Alloy. You are a funny, witty bot. Your interface with users includes both voice and vision capabilities. "
+                        "Whenever a user asks you to 'see', 'look at', 'analyze', 'read' something visually, or anything that requires visual perception, you should utilize your vision capabilities."
+                        " Respond with short and concise answers. Avoid using unpronouncable punctuation or emojis."
+                    ),
+
             )
         ]
     )
@@ -113,7 +115,11 @@ async def entrypoint(ctx: JobContext):
         """This event triggers whenever we get a new message from the user."""
 
         if msg.message:
-            asyncio.create_task(_answer(msg.message, use_image=False))
+            keywords = ["see", "look", "photo", "camera", "image", "cam", "read", "vision", "scene", "picture"]
+            if any(keyword in msg.message.lower() for keyword in keywords):
+                asyncio.create_task(_answer(msg.message, use_image=True))
+            else:
+                asyncio.create_task(_answer(msg.message, use_image=False))
 
     @assistant.on("function_calls_finished")
     def on_function_calls_finished(called_functions: list[agents.llm.CalledFunction]):
@@ -124,12 +130,15 @@ async def entrypoint(ctx: JobContext):
 
         user_msg = called_functions[0].call_info.arguments.get("user_msg")
         if user_msg:
+            #use_image = "image" in [cf.function_name for cf in called_functions] and latest_image is not None
+            #asyncio.create_task(_answer(user_msg, use_image=use_image))
             asyncio.create_task(_answer(user_msg, use_image=True))
+
 
     assistant.start(ctx.room)
 
     await asyncio.sleep(1)
-    await assistant.say("Hi there! How can I help?", allow_interruptions=True)
+    await assistant.say("Hello there!", allow_interruptions=True)
 
     while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
         video_track = await get_video_track(ctx.room)
